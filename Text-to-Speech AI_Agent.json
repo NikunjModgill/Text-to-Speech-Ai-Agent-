@@ -1,0 +1,159 @@
+{
+  "name": "Text-to-Speech AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [-544, 0],
+      "id": "0deaba97-80c2-4433-91b3-f4bfd313008f",
+      "name": "When chat message received",
+      "webhookId": ""
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a writer that creates powerful, short, and meaningful text.\nOnly text output, no extra notes.\n\nExample:\nInput: How to speak.\nOutput: Fewer words, deeper meaning. Pause to breathe, reflect, and connect. Let your tone show honesty. Listen more, reply less."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [-336, 0],
+      "id": "1db29f3d-5fb9-47b9-b022-311979c10826",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite-preview-06-17",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-384, 224],
+      "id": "35603d05-47a6-458d-bb2f-82aae5f3f38a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://qwen-qwen-tts-demo.hf.space/gradio_api/call/predict",
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [{}]
+        },
+        "jsonBody": "={\n  \"data\": [\n    \"{{ $json.output }}\",\n    \"Ethan\"\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [16, 0],
+      "id": "3dac615d-2cad-429f-bd22-338d8055a41f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "=https://qwen-qwen-tts-demo.hf.space/gradio_api/call/predict/{{ $json.event_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "id": "05330da4-6a3f-4cf9-8555-c6747d059f73",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "options": {
+          "systemMessage": "Your job is to extract audio URL only from given text. return only URL, not other word."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [448, 0],
+      "id": "b043daa9-cd63-4a86-b3ed-b39ebcb9b46f",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite-preview-06-17",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [512, 240],
+      "id": "215b1e2c-142c-4ef2-852a-9feec52d4d40",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.output }}",
+        "options": {
+          "response": {
+            "response": { "responseFormat": "file" }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [816, 0],
+      "id": "de1d9fd3-8754-4cef-b23a-ae660bfbf966",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input text\nconst text = $input.first().json.data;\n\nconst match = text.match(/data:\\s*(\\[.*\\])/s);\nlet url = null;\n\nif (match) {\n  try {\n    const parsed = JSON.parse(match[1]);\n    if (parsed.length > 0 && parsed[0].url) {\n      url = parsed[0].url;\n    }\n  } catch (e) {}\n}\n\nreturn [{ audioUrl: url }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1104, 1264],
+      "id": "56bc7466-288b-4a56-8534-bcf2050e36b8",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent": {
+      "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request": {
+      "main": [[{ "node": "HTTP Request1", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request1": {
+      "main": [[{ "node": "AI Agent1", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [[{ "node": "AI Agent1", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent1": {
+      "main": [[{ "node": "HTTP Request2", "type": "main", "index": 0 }]]
+    },
+    "Code in JavaScript": {
+      "main": [[]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "id": "",
+  "tags": []
+}
+
